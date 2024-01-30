@@ -1,0 +1,11 @@
+__pycache__
+res/*
+logs
+.idea/
+logs/
+scripts/
+embeddings/
+checkpoints/
+data/
+notebooks/
+scripts/
