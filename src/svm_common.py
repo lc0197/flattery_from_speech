@@ -9,21 +9,30 @@ from tqdm import tqdm
 from config import DATA_DIR, FEATURE_DIR
 from src.eval import eval_binary
 
+import numpy as np
 
-def _load_sentence_data(features):
+def _load_sentence_data(features:str) -> pd.DataFrame:
+    """
+
+    Args:
+        features: string for feature name (csv under FEATURE_DIR)
+
+    Returns: DataFrame with sentence_id, speaker, flattery value and all features
+
+    """
+    # TODO adapt after simplifying final_db
     db = pd.read_csv(os.path.join(DATA_DIR, 'final_db.csv'))[['sentence_id', 'speaker', 'flattery']]
-    # each csv corresponds to one sentence
     feature_csv = os.path.join(FEATURE_DIR, f'{features}.csv')
     feature_df = pd.read_csv(feature_csv)
     feature_df.rename(columns={'ID':'sentence_id'}, inplace=True)
     db_len = len(db)
-    #feature_df.fillna(0., inplace=True)
     full_df = db.merge(feature_df, on='sentence_id', how='outer')
     assert len(full_df) == db_len
     full_df.sort_values(by='sentence_id', inplace=True)
     return full_df
 
 
+# normalise based on MinMaxScaler on training features
 def _normalise_data(data_dct):
     train_x = data_dct['train']['X']
     normaliser = MinMaxScaler().fit(train_x)
@@ -31,9 +40,8 @@ def _normalise_data(data_dct):
         data_dct[partition]['X'] = normaliser.transform(data_dct[partition]['X'])
     return data_dct
 
-
+# auxiliary method to bring args.class_weight into right format
 def create_class_weights(cw_list):
-    # bring args.class_weight into right format
     if cw_list is None:
         return [None]
     ls = []
@@ -45,7 +53,8 @@ def create_class_weights(cw_list):
     return ls
 
 
-def _create_grids(args):
+# create valid parameter grids from svm-related CMD arguments
+def _create_grids(args) -> ParameterGrid:
     grids = []
     num_configs = 0
     # linear
@@ -85,6 +94,7 @@ def _create_grids(args):
     return param_grid
 
 
+# load data and split it into dictionaries for train, dev, test
 def _split_data(data_df):
     split_df = pd.read_csv(os.path.join(DATA_DIR, f'split.csv'))
     dct = {}

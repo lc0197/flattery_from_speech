@@ -22,36 +22,30 @@ from eval import eval_binary
 from svm_common import _load_sentence_data, _normalise_data, create_class_weights, _create_grids, _split_data, \
     _optimise_svm
 
-FEATURE_LEVEL = 'feature_level'
-LATE_FUSION = 'late_fusion'
-OTHER = 'other'
-# TODO is this really used? - remove late fusion here...
-METHODS = [FEATURE_LEVEL, LATE_FUSION, OTHER]
-
 
 def parse_args():
     parser = ArgumentParser()
     # data
-    # sentence level only
-    #parser.add_argument('--level', required=True, choices=LEVELS)
-    parser.add_argument('--feature_a', type=str, required=True)
-    parser.add_argument('--feature_t', type=str, required=True)
-    parser.add_argument('--normalize', action='store_true')
-    # hparams
-    parser.add_argument('--Cs', nargs='+', type=float, default=[1.])
-    parser.add_argument('--kernels', nargs='+', type=str, choices=['linear', 'poly', 'rbf', 'sigmoid'], default=['linear'])
-    parser.add_argument('--degrees', nargs='+', type=int, default=[3])
-    parser.add_argument('--class_weights', nargs='+', required=False, type=str, help='Either an integer or "balanced" or omit - then None')
-    parser.add_argument('--gammas', nargs='+', type=str, default=['scale'])
+    parser.add_argument('--feature_a', type=str, required=True, help='feature prefix in features/directory. The concrete feature files are named {feature_a}_{seed}.csv')
+    parser.add_argument('--feature_t', type=str, required=True, help='cf. feature_a. Available seeds must match with --feature_a as well as --seed and --n_seeds')
+    parser.add_argument('--normalize', action='store_true', help='Normalize both features before training?')
+    # svm hparams
+    parser.add_argument('--Cs', nargs='+', type=float, default=[1.], help='C values to try for SVM')
+    parser.add_argument('--kernels', nargs='+', type=str, choices=['linear', 'poly', 'rbf', 'sigmoid'], default=['linear'],
+                        help='kernels to try for SVM')
+    parser.add_argument('--degrees', nargs='+', type=int, default=[3], help='degree values to try for suitable SVM kernels')
+    parser.add_argument('--class_weights', nargs='+', required=False, type=str,
+                        help='List of weights for the positive (minority) class. '
+                             'Contains integers and/or "balanced". If omitted, no weighting is applied')
+    parser.add_argument('--gammas', nargs='+', type=str, default=['scale'], help='gamma values to try for SVM')
     # experiment config
-    # TODO make clear usage of seeds here
-    parser.add_argument('--seed', type=int, default=101)
+    parser.add_argument('--seed', type=int, default=101, help='In combination with --n_seeds, this determines which feature csvs to use. Cf. --feature_a')
     parser.add_argument('--n_seeds', type=int, default=5)
     parser.add_argument('--metric', type=str, default='uar', choices=['f1', 'uar'])
     parser.add_argument('--run_name', type=str, required=False)
-    parser.add_argument('--experiment_family', type=str, required=False)
-    parser.add_argument('--use_linear_svc', action='store_true', help='Only applicable for linear-only --kernel')
-    parser.add_argument('--method', choices=METHODS, required=True)
+    parser.add_argument('--experiment_family', type=str, required=False, help='Optional, write results to a csv')
+    parser.add_argument('--use_linear_svc', action='store_true', help='Only applicable for linear-only --kernel. '
+                                                                      'Means that sklearn.svm.LinearSVC class is used instead of sklearn.svm.SVC')
 
 
     args = parser.parse_args()
@@ -66,6 +60,7 @@ def parse_args():
     return args
 
 
+# loads two different feature files, returns them as dicts
 def _load_data(feature_a, feature_t, args):
     data_df_a = _load_sentence_data(feature_a)
     data_df_t = _load_sentence_data(feature_t)
@@ -84,7 +79,7 @@ def _load_data(feature_a, feature_t, args):
 
 
 def _init_log_dir(args):
-    log_dir = os.path.join(LOG_DIR, 'svm_multi', args.split, args.method, f'{args.feature_a}_{args.feature_t}', args.run_name)
+    log_dir = os.path.join(LOG_DIR, 'svm_early_fusion', f'{args.feature_a}_{args.feature_t}', args.run_name)
     os.makedirs(log_dir)
     pred_dir = os.path.join(log_dir, 'predictions')
     os.makedirs(pred_dir)
@@ -93,6 +88,7 @@ def _init_log_dir(args):
     return log_dir, pred_dir
 
 
+# merge two feature dicts for early fusion
 def _merge_representations(data_a, data_t):
     data_dct_merged = {}
     for partition in data_a.keys():
@@ -103,8 +99,7 @@ def _merge_representations(data_a, data_t):
     return data_dct_merged
 
 
-# TODO rename
-def train_feature_level(data_a, data_t, grid, args):
+def train_early_fusion(data_a, data_t, grid, args):
     data_dct = _merge_representations(data_a, data_t)
     best_config, best_metric, best_model = _optimise_svm(data_dct, grid, args)
     # metrics for predictions
@@ -136,8 +131,7 @@ if __name__ == '__main__':
 
         print(f'Training for seed {seed}')
 
-
-        best_config, dev_metrics, test_metrics, dev_df, test_df = train_feature_level(
+        best_config, dev_metrics, test_metrics, dev_df, test_df = train_early_fusion(
                 data_dct_a, data_dct_t, grid, args)
 
         seed_dct = {'config': best_config}

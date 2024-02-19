@@ -1,20 +1,12 @@
 import json
 import os
-import pickle
 from argparse import ArgumentParser
 from time import ctime, time
 
 import numpy as np
 import pandas as pd
-from glob import glob
 
-from sklearn.metrics import precision_score, recall_score, f1_score
-from sklearn.model_selection import GridSearchCV, ParameterGrid
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.svm import SVC, LinearSVC
-from tqdm import tqdm
-
-from config import DATA_DIR, FEATURE_DIR, LOG_DIR
+from config import LOG_DIR
 from eval import eval_binary
 from svm_common import _load_sentence_data, _normalise_data, create_class_weights, _create_grids, _split_data, \
     _optimise_svm
@@ -23,23 +15,22 @@ from svm_common import _load_sentence_data, _normalise_data, create_class_weight
 def parse_args():
     parser = ArgumentParser()
     # data
-    # sentence level only
-    #parser.add_argument('--level', required=True, choices=LEVELS)
-    parser.add_argument('--feature', type=str, required=True)
-    parser.add_argument('--normalize', action='store_true')
-    # hparams
-    parser.add_argument('--Cs', nargs='+', type=float, default=[1.])
-    parser.add_argument('--kernels', nargs='+', type=str, choices=['linear', 'poly', 'rbf', 'sigmoid'], default=['linear'])
-    parser.add_argument('--degrees', nargs='+', type=int, default=[3])
-    parser.add_argument('--class_weights', nargs='+', required=False, type=str, help='Either an integer or "balanced" or omit - then None')
-    parser.add_argument('--gammas', nargs='+', type=str, default=['scale'])
+    parser.add_argument('--feature', type=str, required=True, help='feature name, script will load data/features/{feature}.csv')
+    parser.add_argument('--normalize', action='store_true', help='Normalize before training?')
+    # svm hparams
+    parser.add_argument('--Cs', nargs='+', type=float, default=[1.], help='C values to try for SVM')
+    parser.add_argument('--kernels', nargs='+', type=str, choices=['linear', 'poly', 'rbf', 'sigmoid'], default=['linear'],
+                        help='kernels to try for SVM')
+    parser.add_argument('--degrees', nargs='+', type=int, default=[3], help='degree values to try for suitable SVM kernels')
+    parser.add_argument('--class_weights', nargs='+', required=False, type=str, help='List of weights for the positive (minority) class. '
+                             'Contains integers and/or "balanced". If omitted, no weighting is applied')
+    parser.add_argument('--gammas', nargs='+', type=str, default=['scale'], help='gamma values to try for SVM')
     # experiment config
-    parser.add_argument('--seed', type=int, default=101)
-    parser.add_argument('--n_seeds', type=int, default=5)
     parser.add_argument('--metric', type=str, default='uar', choices=['f1', 'uar'])
     parser.add_argument('--run_name', type=str, required=False)
-    parser.add_argument('--experiment_family', type=str, required=False)
-    parser.add_argument('--use_linear_svc', action='store_true', help='Only applicable for linear-only --kernel')
+    parser.add_argument('--experiment_family', type=str, required=False, help='Optional, write results to a csv')
+    parser.add_argument('--use_linear_svc', action='store_true', help='Only applicable for linear-only --kernel. '
+                                                                      'Means that sklearn.svm.LinearSVC class is used instead of sklearn.svm.SVC')
 
 
     args = parser.parse_args()
@@ -65,7 +56,7 @@ def _load_data(args):
 
 
 def _init_log_dir(args):
-    log_dir = os.path.join(LOG_DIR, 'svm', args.split, args.feature, args.run_name)
+    log_dir = os.path.join(LOG_DIR, 'svm', args.feature, args.run_name)
     os.makedirs(log_dir)
     with open(os.path.join(log_dir, 'config.json'), 'w+') as f:
         json.dump(vars(args), f)
@@ -84,24 +75,6 @@ if __name__ == '__main__':
     log_dict = {'params':vars(args)}
 
     best_config, best_metric, best_model = _optimise_svm(data_dct, grid, args)
-    # best_config = None
-    # best_metric = -100
-    # best_model = None
-    #
-    # for config in tqdm(list(grid)):
-    #     if args.use_linear_svc:
-    #         svc = LinearSVC(C=config['C'], class_weight=config['class_weight'], dual=False, random_state=seed)
-    #     else:
-    #         svc = SVC(**config)
-    #     svc.fit(data_dct['train']['X'], data_dct['train']['y'])
-    #     dev_preds = svc.predict(data_dct['dev']['X'])
-    #     metrics = eval_binary(data_dct['dev']['y'], dev_preds)
-    #     relevant_metric = metrics[args.metric]
-    #     if relevant_metric > best_metric:
-    #         best_metric = relevant_metric
-    #         best_config = config
-    #         best_model = svc
-
 
     dev_predictions = best_model.predict(data_dct['dev']['X'])
     test_predictions = best_model.predict(data_dct['test']['X'])
@@ -121,8 +94,7 @@ if __name__ == '__main__':
     with open(os.path.join(log_dir, 'log.json'), 'w+') as f:
         json.dump(log_dict, f)
 
-
-    # add to experiment family
+    # add to csv
     if not (args.experiment_family is None):
         row_dct = vars(args)
         row_dct.update(log_dict['results'])
