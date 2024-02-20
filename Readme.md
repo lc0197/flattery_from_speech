@@ -1,5 +1,7 @@
 # Flattery Prediction from Speech and Text 
 
+[TODO add paper link](TODO)
+
 ## Getting started 
 
 First, install all requirements in ``requirements.txt``.
@@ -15,10 +17,14 @@ I.e., experiments using only one set of features. The script ``svm_experiments.p
 Example call:
 
 `` 
-TODO
+python3 svm_experiments_simple.py --feature w2v2_base_960_hidden_7_ --Cs 0.1 1. --kernels linear rbf
 ``
 
-For details, see ``parse_args()`` or call the script with the ``--help`` option. 
+This call would run a grid search for the given feature using the 
+two given parameters for ``C`` and ``kernel`` in ``sklearn.svm.SVC``. The logs would be placed in 
+a folder under ``logs/svm/w2v2_base_960_hidden_7_``.  
+
+For all parameters and details, see ``parse_args()`` or call the script with the ``--help`` option. 
 
 
 ## Early Fusion SVM experiments
@@ -28,11 +34,16 @@ These experiments differ from the "simple" ones in that they utilise a range of 
 models to be fused. This is best illustrated via an example call:
 
 ``` 
-TODO
+python svm_early_fusion.py --feature_a w2v_ft --feature_t gold_roberta --Cs 0.01 0.1 1. --seed 101 --n_seeds 3
 ```
 
-Here, ``--n_seeds``=3 rows of experiments will be run and their average results reported: 
-1) based on (``TODO_t1``, ``TODO_t2``), 2) based on etc. TODO 
+Here, ``--n_seeds``=3 rows of experiments (grid searches over the given ``C`` values) 
+will be run and their average results reported: 
+1) based on the features (``gold_roberta_101(.csv)``, ``w2v_ft_101(.csv)``), 
+2) based on  (``gold_roberta_102(.csv)``, ``w2v_ft_102(.csv)``) and 
+3) based on  (``gold_roberta_103(.csv)``, ``w2v_ft_103(.csv)``).
+
+The logs are to be found in ``logs/svm_early_fusion/{feature_a}_{feature_t}``.
 
 ## Late Fusion 
 Late Fusion simply fuses two sets of predictions of our finetuned models, as can be found in the ``predictions``
@@ -41,7 +52,9 @@ Similar to the early fusion experiments, it expects these predictions to be orga
 trained with. See the directories in ``predictions`` and an example call for clarification:
 
 `` 
-TODO
+python late_fusions.py --method unweighted --audio w2v_msp --text roberta_base_gold
 ``
 
+This would look up and fuse all the predictions given in ``predictions/audio/w2v_msp`` and ``predictions/textual/roberta_base_gold``, respectively.
+Similar to early fusion, the script runs an experiment for every seed (i.e. 101, 102,...) it finds in the predictions directory and reports average results.
 The script support unweighted and weighted (based on development set performance) late fusion via the parameter ``--method``

@@ -20,7 +20,6 @@ def _load_sentence_data(features:str) -> pd.DataFrame:
     Returns: DataFrame with sentence_id, speaker, flattery value and all features
 
     """
-    # TODO adapt after simplifying final_db
     db = pd.read_csv(os.path.join(DATA_DIR, 'final_db.csv'))[['sentence_id', 'speaker', 'flattery']]
     feature_csv = os.path.join(FEATURE_DIR, f'{features}.csv')
     feature_df = pd.read_csv(feature_csv)
