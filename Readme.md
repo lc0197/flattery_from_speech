@@ -9,7 +9,19 @@ First, install all requirements in ``requirements.txt``.
 We fine-tune RoBERTa-base with 5 different seeds. The best of these models, fine-tuned with the gold standard transcripts, is available at [the huggingface hub](TODO).
 Analogously, we fine-tune [Wav2Vec2-MSP](TODO) with 5 different seeds and make the best of these models [available]().
 
-This repository contains the code to reproduce the SVM-based experiments. For this, the features must be downloaded [from zenodo](https://zenodo.org/records/11561487) and placed in the top-level directory.  
+This repository contains the code to reproduce the SVM-based experiments. For this, the features must be downloaded [from zenodo](https://zenodo.org/records/11561487) and placed in the ``data`` directory like this:
+
+```
+|-- data
+    |-- features
+        |-- w2v2_msp_hidden_11.csv
+        |-- ...
+    |--- final_db.csv
+    |--- split.csv
+|-- src
+    |-- ...
+|--- ...
+```
 
 ## Simple SVM experiments 
 I.e., experiments using only one set of features. The script ``svm_experiments.py`` implements a grid search for SVM-based classification.
