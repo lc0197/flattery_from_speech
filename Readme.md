@@ -1,6 +1,6 @@
 # Flattery Prediction from Speech and Text 
-
-[ArXiv](http://arxiv.org/abs/2406.17667)
+Code for the Interspeech 2024 Paper *This Paper Had the Smartest Reviewers - Flattery Detection Utilising an Audio-Textual Transformer-Based Approach*.
+ [ArXiv](http://arxiv.org/abs/2406.17667)
 
 ## Getting started 
 
