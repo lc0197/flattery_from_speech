@@ -1,6 +1,6 @@
 # Flattery Prediction from Speech and Text 
 
-[TODO add paper link](TODO)
+[ArXiv](http://arxiv.org/abs/2406.17667)
 
 ## Getting started 
 
